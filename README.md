@@ -19,11 +19,7 @@ How to run:
    create_date date
    ); "
 7. Open another terminal to check if the table is created
-   a. run Command : "psql -h localhost -p 5432 -U postgres -W" - connect to localhost server
-   b. command to check the table names " \dt "c.Check if the table user_login visible or not.
-
-  8. Run the code "etl.py" using command " python etl.py"
-
-   Note: please install python using pip install python
-
-9. Verify the results using command "Select * FROM user_logins;" in the psql database.
+8. run Command : "psql -h localhost -p 5432 -U postgres -W" - connect to localhost server
+9. command to check the table names " \dt ,check if the table user_login visible or not.
+10. Run the code "etl.py" using command " python etl.py", Note: please install python using pip install python
+11. Verify the results using command "Select * FROM user_logins;" in the psql database.
