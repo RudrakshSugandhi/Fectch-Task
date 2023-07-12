@@ -1,6 +1,7 @@
 import json
+import subprocess
 import psycopg2
-from awscli.clidriver import create_clidriver
+import packaging.version
 
 # Connect to the Postgres database
 conn = psycopg2.connect(
@@ -13,33 +14,42 @@ conn = psycopg2.connect(
 cursor = conn.cursor()
 
 # Read messages from the SQS queue
-sqs_command = create_clidriver().create_command('sqs', 'receive-message', '--queue-url', 'http://localhost:4566/000000000000/login-queue')
-sqs_response = sqs_command.main()
+sqs_command = ["awslocal", "sqs", "receive-message", "--queue-url", "http://localhost:4566/000000000000/login-queue"]
+sqs_response = subprocess.run(sqs_command, capture_output=True, text=True)
+sqs_output = json.loads(sqs_response.stdout)
 
-if 'Messages' in sqs_response:
-    for message in sqs_response['Messages']:
+if 'Messages' in sqs_output:
+    for message in sqs_output['Messages']:
         # Parse the received JSON message
-        data = json.loads(message['Body'])
+        data = json.loads(message['Body']) 
+        # Check if all required fields exist in the data
+        if 'user_id' in data and 'device_type' in data and 'ip' in data and 'device_id' in data and 'locale' in data and 'app_version' in data:
+            # Mask the PII data (device_id and ip) using a hash function
+            masked_device_id = hash(data['device_id'])
+            masked_ip = hash(data['ip'])
 
-        # Mask the PII data (device_id and ip) using a hash function
-        masked_device_id = hash(data['device_id'])
-        masked_ip = hash(data['ip'])
+            # Extract the fields from the data
+            user_id = data['user_id']
+            device_type = data['device_type']
+            locale = data['locale']
 
-        # Flatten the JSON object and extract the required fields
-        user_id = data['user_id']
-        device_type = data['device_type']
-        locale = data['locale']
-        app_version = data['app_version']
-        create_date = data['create_date']
+            # Parse app_version as a numeric value converting into string and then to integer to parse
+            app_version = packaging.version.parse(data['app_version'])
+            app_version_str = "{}{}".format(app_version.release[0], app_version.release[1])
+            app_version_int = int(app_version_str)
 
-        # Insert the transformed record into the user_logins table
-        insert_query = """
-        INSERT INTO user_logins (user_id, device_type, masked_ip, masked_device_id, locale, app_version, create_date)
-        VALUES (%s, %s, %s, %s, %s, %s, %s);
-        """
-        cursor.execute(insert_query, (user_id, device_type, masked_ip, masked_device_id, locale, app_version, create_date))
-        conn.commit()
+            # Set create_date to None if it is missing
+            create_date = data.get('create_date')
+
+            # Insert the transformed record into the user_logins table
+            insert_query = """
+            INSERT INTO user_logins (user_id, device_type, masked_ip, masked_device_id, locale, app_version, create_date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s);
+            """
+            cursor.execute(insert_query, (user_id, device_type, masked_ip, masked_device_id, locale, app_version_int, create_date))
+            conn.commit()
+        else:
+            print("Required fields are missing in the data")
 
 # Close the database connection
-cursor.close()
-conn.close()
+cursor.close
