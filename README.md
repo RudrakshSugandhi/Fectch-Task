@@ -24,7 +24,9 @@ How to run:
 10. Run the code "etl.py" using command " python etl.py", Note: please install python using pip install python
 11. Verify the results using command "Select * FROM user_logins;" in the psql database.
 
-Questions and Answers:
+**Questions and Answers:**
+
+
 For this assignment an ounce of communication and organization is worth a pound of execution.
 Please answer the following questions:
 ● How would you deploy this application in production?
